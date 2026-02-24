@@ -98,7 +98,19 @@ export default function TenantLanding({ params }: { params: { tenantSlug: string
     const [leadSent, setLeadSent] = useState(false);
     const [openFaq, setOpenFaq] = useState<number | null>(null);
     const [mobileMenu, setMobileMenu] = useState(false);
+    const [user, setUser] = useState<{ name: string } | null>(null);
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
+    useEffect(() => {
+        const stored = localStorage.getItem('user');
+        if (stored) {
+            try {
+                setUser(JSON.parse(stored));
+            } catch (e) {
+                // Ignore parsing errors
+            }
+        }
+    }, []);
 
     useEffect(() => {
         fetch(`${apiUrl}/t/${params.tenantSlug}/public/info`)
@@ -148,7 +160,15 @@ export default function TenantLanding({ params }: { params: { tenantSlug: string
                         <a href="#faq" className="hover:text-primary-600 transition-colors">FAQ</a>
                     </div>
                     <div className="flex items-center gap-4">
-                        <a href={`/t/${params.tenantSlug}/login`} className="hidden sm:inline text-sm font-semibold text-primary-700 hover:text-primary-900 transition-colors">Iniciar sesión</a>
+                        {user ? (
+                            <>
+                                <span className="hidden sm:inline text-sm font-medium text-gray-600">Hola, {user.name}</span>
+                                <a href={`/t/${params.tenantSlug}/portal`} className="hidden sm:inline text-sm font-semibold text-primary-700 hover:text-primary-900 transition-colors">Mi Portal</a>
+                                <button onClick={() => { localStorage.clear(); setUser(null); }} className="hidden sm:inline text-sm font-semibold text-red-500 hover:text-red-600 transition-colors">Salir</button>
+                            </>
+                        ) : (
+                            <a href={`/t/${params.tenantSlug}/login`} className="hidden sm:inline text-sm font-semibold text-primary-700 hover:text-primary-900 transition-colors">Iniciar sesión</a>
+                        )}
                         <a href={`/t/${params.tenantSlug}/book`} className="btn-primary !py-2.5 !px-5 text-sm">
                             Reservar clase
                         </a>
@@ -164,7 +184,14 @@ export default function TenantLanding({ params }: { params: { tenantSlug: string
                             const [label, href] = item.split('|');
                             return <a key={href} href={href} onClick={() => setMobileMenu(false)} className="block text-lg font-medium text-gray-700 hover:text-primary-600">{label}</a>;
                         })}
-                        <a href={`/t/${params.tenantSlug}/login`} className="block text-lg font-medium text-primary-600">Iniciar sesión</a>
+                        {user ? (
+                            <>
+                                <a href={`/t/${params.tenantSlug}/portal`} className="block text-lg font-medium text-primary-600">Mi Portal</a>
+                                <button onClick={() => { localStorage.clear(); setUser(null); setMobileMenu(false); }} className="block text-lg font-medium text-red-500 w-full text-left">Salir</button>
+                            </>
+                        ) : (
+                            <a href={`/t/${params.tenantSlug}/login`} className="block text-lg font-medium text-primary-600">Iniciar sesión</a>
+                        )}
                     </div>
                 )}
             </nav>
