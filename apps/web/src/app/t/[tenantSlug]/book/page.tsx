@@ -59,6 +59,56 @@ export default function BookPage({ params }: { params: { tenantSlug: string } })
             .catch(() => setSlotsLoading(false));
     }, [selectedType, selectedDate, apiUrl, params.tenantSlug]);
 
+    const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
+        let token = localStorage.getItem('token');
+        let res = await fetch(url, {
+            ...options,
+            headers: {
+                ...options.headers,
+                ...(token ? { Authorization: `Bearer ${token}` } : {})
+            }
+        });
+
+        if (res.status === 401) {
+            const refreshToken = localStorage.getItem('refreshToken');
+            if (refreshToken) {
+                try {
+                    const refreshRes = await fetch(`${apiUrl}/auth/refresh`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ refreshToken })
+                    });
+                    const refreshData = await refreshRes.json();
+                    if (refreshData.ok) {
+                        token = refreshData.data.accessToken;
+                        localStorage.setItem('token', token!);
+                        localStorage.setItem('refreshToken', refreshData.data.refreshToken);
+                        // Retry original request
+                        res = await fetch(url, {
+                            ...options,
+                            headers: {
+                                ...options.headers,
+                                Authorization: `Bearer ${token}`
+                            }
+                        });
+                    } else {
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('refreshToken');
+                        localStorage.removeItem('user');
+                        router.push(`/t/${params.tenantSlug}/login`);
+                    }
+                } catch (e) {
+                    localStorage.removeItem('token');
+                    router.push(`/t/${params.tenantSlug}/login`);
+                }
+            } else {
+                localStorage.removeItem('token');
+                router.push(`/t/${params.tenantSlug}/login`);
+            }
+        }
+        return res;
+    };
+
     const handleBook = async () => {
         const token = localStorage.getItem('token');
         if (!token) {
@@ -70,11 +120,10 @@ export default function BookPage({ params }: { params: { tenantSlug: string } })
         setLoading(true);
         setError('');
         try {
-            const res = await fetch(`${apiUrl}/t/${params.tenantSlug}/bookings`, {
+            const res = await fetchWithAuth(`${apiUrl}/t/${params.tenantSlug}/bookings`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify({
                     lessonTypeId: selectedType.id,
@@ -107,11 +156,10 @@ export default function BookPage({ params }: { params: { tenantSlug: string } })
         setLoading(true);
         setError('');
         try {
-            const res = await fetch(`${apiUrl}/t/${params.tenantSlug}/packs/purchase`, {
+            const res = await fetchWithAuth(`${apiUrl}/t/${params.tenantSlug}/packs/purchase`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify({
                     lessonTypeId: packType.id,
