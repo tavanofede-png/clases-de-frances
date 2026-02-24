@@ -105,9 +105,9 @@ export default function TenantLanding({ params }: { params: { tenantSlug: string
                     </div>
                     <div className="flex items-center gap-4">
                         <a href={`/t/${params.tenantSlug}/login`} className="text-sm font-semibold text-primary-700 hover:text-primary-900 transition-colors">Iniciar sesión</a>
-                        <button onClick={() => setShowLeadForm(true)} className="btn-primary !py-2.5 !px-5 text-sm">
+                        <a href={`/t/${params.tenantSlug}/book`} className="btn-primary !py-2.5 !px-5 text-sm">
                             Reservar clase
-                        </button>
+                        </a>
                     </div>
                 </div>
             </nav>
@@ -130,9 +130,9 @@ export default function TenantLanding({ params }: { params: { tenantSlug: string
                         {info?.heroSubtitle || 'Aprende francés desde la comodidad de tu hogar con una profesora certificada y metodología comunicativa.'}
                     </p>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-5">
-                        <button onClick={() => setShowLeadForm(true)} className="btn-primary text-lg !px-10 !py-4 shadow-xl shadow-primary-900/20">
+                        <a href={`/t/${params.tenantSlug}/book`} className="btn-primary text-lg !px-10 !py-4 shadow-xl shadow-primary-900/20">
                             Reservar clase de prueba
-                        </button>
+                        </a>
                         <a href={waLink} target="_blank" rel="noopener noreferrer" className="btn-secondary text-lg !px-10 !py-4 bg-white/50 backdrop-blur-sm">
                             Hablemos por WhatsApp
                         </a>
@@ -228,15 +228,15 @@ export default function TenantLanding({ params }: { params: { tenantSlug: string
                                     )}
                                 </div>
                                 <div className="mt-auto">
-                                    <button
-                                        onClick={() => setShowLeadForm(true)}
+                                    <a
+                                        href={`/t/${params.tenantSlug}/book`}
                                         className={`w-full ${i === 1
                                             ? 'btn-accent shadow-accent-500/25'
                                             : 'inline-flex items-center justify-center px-6 py-3 text-sm font-bold rounded-xl bg-slate-100 text-slate-900 hover:bg-slate-200 transition-colors'
                                             }`}
                                     >
                                         Reservar ahora
-                                    </button>
+                                    </a>
                                 </div>
                             </div>
                         ))}
@@ -307,12 +307,12 @@ export default function TenantLanding({ params }: { params: { tenantSlug: string
                         Reserva tu clase de prueba hoy y descubre lo fácil que es dominar el francés con el apoyo adecuado.
                     </p>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-5">
-                        <button
-                            onClick={() => setShowLeadForm(true)}
+                        <a
+                            href={`/t/${params.tenantSlug}/book`}
                             className="btn-accent text-lg !px-10 !py-4 w-full sm:w-auto"
                         >
                             Reservar clase de prueba
-                        </button>
+                        </a>
                         <a
                             href={waLink}
                             target="_blank"

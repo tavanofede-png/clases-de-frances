@@ -2,9 +2,78 @@ import { Router, Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../index';
 import { generateTokens, verifyToken, requireAuth, AuthPayload } from '../middleware/auth';
-import { LoginSchema } from '@teach-pro/shared';
+import { LoginSchema, RegisterSchema } from '@teach-pro/shared';
 
 export const authRouter = Router();
+
+// POST /auth/register
+authRouter.post('/register', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const body = RegisterSchema.parse(req.body);
+
+        // Check if email already exists
+        const existing = await prisma.user.findUnique({ where: { email: body.email } });
+        if (existing) {
+            return res.status(409).json({ ok: false, error: 'Ya existe una cuenta con este email' });
+        }
+
+        // Find tenant by slug
+        const tenant = await prisma.tenant.findUnique({ where: { slug: body.tenantSlug } });
+        if (!tenant) {
+            return res.status(404).json({ ok: false, error: 'Organización no encontrada' });
+        }
+
+        const passwordHash = await bcrypt.hash(body.password, 10);
+
+        // Create user + student in transaction
+        const result = await prisma.$transaction(async (tx) => {
+            const user = await tx.user.create({
+                data: {
+                    tenantId: tenant.id,
+                    email: body.email,
+                    passwordHash,
+                    name: body.name,
+                    role: 'student',
+                    phone: body.phone || null,
+                    timezone: tenant.timezone,
+                },
+            });
+
+            await tx.student.create({
+                data: {
+                    tenantId: tenant.id,
+                    userId: user.id,
+                },
+            });
+
+            return user;
+        });
+
+        const payload: AuthPayload = {
+            userId: result.id,
+            email: result.email,
+            role: result.role,
+            tenantId: result.tenantId || undefined,
+        };
+        const tokens = generateTokens(payload);
+
+        res.status(201).json({
+            ok: true,
+            data: {
+                user: {
+                    id: result.id,
+                    email: result.email,
+                    name: result.name,
+                    role: result.role,
+                    tenantId: result.tenantId,
+                },
+                ...tokens,
+            },
+        });
+    } catch (error) {
+        next(error);
+    }
+});
 
 // POST /auth/login
 authRouter.post('/login', async (req: Request, res: Response, next: NextFunction) => {

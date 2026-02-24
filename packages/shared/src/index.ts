@@ -36,6 +36,15 @@ export const LoginSchema = z.object({
 });
 export type LoginInput = z.infer<typeof LoginSchema>;
 
+export const RegisterSchema = z.object({
+    name: z.string().min(2, 'El nombre es obligatorio'),
+    email: z.string().email('Email inválido'),
+    password: z.string().min(6, 'La contraseña debe tener mínimo 6 caracteres'),
+    phone: z.string().min(7, 'Ingresa un número de celular válido').optional().or(z.literal('')),
+    tenantSlug: z.string().min(1, 'Tenant es requerido'),
+});
+export type RegisterInput = z.infer<typeof RegisterSchema>;
+
 // ════════════════════════════════════════════════════════════
 // Leads
 // ════════════════════════════════════════════════════════════
