@@ -1,0 +1,422 @@
+// ─────────────────────────────────────────────────────────────
+// Teach-Pro  ·  Prisma Schema  ·  Multi-tenant SaaS
+// ─────────────────────────────────────────────────────────────
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ════════════════════════════════════════════════════════════
+// ENUMS
+// ════════════════════════════════════════════════════════════
+
+enum Role {
+  super_admin
+  tenant_admin
+  student
+}
+
+enum LessonStatus {
+  reserved
+  confirmed
+  completed
+  cancelled
+  no_show
+}
+
+enum PaymentStatus {
+  pending
+  approved
+  rejected
+  failed
+  refunded
+  covered_by_pack
+}
+
+enum PaymentProvider {
+  wompi
+  stripe
+  manual
+}
+
+enum BotChannel {
+  webchat
+  whatsapp
+  telegram
+}
+
+enum JobStatus {
+  queued
+  running
+  completed
+  failed
+  dead_letter
+}
+
+// ════════════════════════════════════════════════════════════
+// TENANTS
+// ════════════════════════════════════════════════════════════
+
+model Tenant {
+  id        String   @id @default(uuid())
+  slug      String   @unique
+  name      String
+  timezone  String   @default("America/Bogota")
+  currency  String   @default("COP")
+  locale    String   @default("es-CO")
+  logoUrl   String?  @map("logo_url")
+  isActive  Boolean  @default(true) @map("is_active")
+  plan      String   @default("trial")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  settings         TenantSettings?
+  users            User[]
+  students         Student[]
+  lessonTypes      LessonType[]
+  lessons          Lesson[]
+  packs            Pack[]
+  payments         Payment[]
+  availabilityRules AvailabilityRule[]
+  blockedTimes     BlockedTime[]
+  messageLogs      MessageLog[]
+  webhooksLogs     WebhooksLog[]
+  featureFlags     FeatureFlag[]
+  jobRuns          JobRun[]
+  packLedger       PackLedger[]
+
+  @@map("tenants")
+}
+
+model TenantSettings {
+  id                         String  @id @default(uuid())
+  tenantId                   String  @unique @map("tenant_id")
+  requirePaymentToConfirm    Boolean @default(true) @map("require_payment_to_confirm")
+  rescheduleMinHours         Int     @default(24) @map("reschedule_min_hours")
+  cancelMinHours             Int     @default(24) @map("cancel_min_hours")
+  noShowConsumeCredit        Boolean @default(true) @map("no_show_consume_credit")
+  // Google Calendar
+  googleCalendarId           String? @map("google_calendar_id")
+  googleAccessToken          String? @map("google_access_token")
+  googleRefreshToken         String? @map("google_refresh_token")
+  // Wompi
+  wompiPublicKey             String? @map("wompi_public_key")
+  wompiPrivateKey            String? @map("wompi_private_key")
+  wompiEventsSecret          String? @map("wompi_events_secret")
+  // Email
+  emailProvider              String? @map("email_provider")
+  emailApiKey                String? @map("email_api_key")
+  emailFrom                  String? @map("email_from")
+  // WhatsApp
+  whatsappToken              String? @map("whatsapp_token")
+  whatsappPhoneNumberId      String? @map("whatsapp_phone_number_id")
+  // Templates
+  confirmationTemplate       String? @map("confirmation_template") @db.Text
+  reminder24hTemplate        String? @map("reminder_24h_template") @db.Text
+  reminder1hTemplate         String? @map("reminder_1h_template") @db.Text
+  pendingPaymentTemplate     String? @map("pending_payment_template") @db.Text
+  followUpTemplate           String? @map("follow_up_template") @db.Text
+  // Landing
+  heroTitle                  String? @map("hero_title")
+  heroSubtitle               String? @map("hero_subtitle")
+  heroImageUrl               String? @map("hero_image_url")
+  aboutText                  String? @map("about_text") @db.Text
+  whatsappNumber             String? @map("whatsapp_number")
+  // Branding
+  primaryColor               String? @map("primary_color") @default("#6366f1")
+  secondaryColor             String? @map("secondary_color") @default("#f59e0b")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@map("tenant_settings")
+}
+
+// ════════════════════════════════════════════════════════════
+// USERS & STUDENTS
+// ════════════════════════════════════════════════════════════
+
+model User {
+  id           String   @id @default(uuid())
+  tenantId     String?  @map("tenant_id")
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String
+  role         Role     @default(student)
+  phone        String?
+  timezone     String   @default("America/Bogota")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  tenant  Tenant?  @relation(fields: [tenantId], references: [id])
+  student Student?
+
+  @@index([tenantId])
+  @@map("users")
+}
+
+model Student {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  userId      String   @unique @map("user_id")
+  level       String?  // A1, A2, B1, B2, C1, C2
+  objectives  String?  @db.Text
+  internalNotes String? @map("internal_notes") @db.Text
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id])
+  user    User     @relation(fields: [userId], references: [id])
+  lessons Lesson[]
+  packs   Pack[]
+
+  @@index([tenantId])
+  @@map("students")
+}
+
+// ════════════════════════════════════════════════════════════
+// LESSON TYPES & LESSONS
+// ════════════════════════════════════════════════════════════
+
+model LessonType {
+  id          String  @id @default(uuid())
+  tenantId    String  @map("tenant_id")
+  name        String
+  description String? @db.Text
+  durationMin Int     @map("duration_min")
+  priceAmount Int     @map("price_amount") // COP sin decimales
+  currency    String  @default("COP")
+  isPackType  Boolean @default(false) @map("is_pack_type")
+  packSize    Int?    @map("pack_size")
+  isActive    Boolean @default(true) @map("is_active")
+  sortOrder   Int     @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id])
+  lessons Lesson[]
+  packs   Pack[]
+
+  @@index([tenantId])
+  @@map("lesson_types")
+}
+
+model Lesson {
+  id               String        @id @default(uuid())
+  tenantId         String        @map("tenant_id")
+  studentId        String        @map("student_id")
+  lessonTypeId     String        @map("lesson_type_id")
+  startsAt         DateTime      @map("starts_at")
+  endsAt           DateTime      @map("ends_at")
+  status           LessonStatus  @default(reserved)
+  paymentStatus    PaymentStatus @default(pending) @map("payment_status")
+  meetingJoinUrl   String?       @map("meeting_join_url")
+  calendarEventId  String?       @map("calendar_event_id")
+  teacherNotes     String?       @map("teacher_notes") @db.Text
+  cancellationReason String?     @map("cancellation_reason")
+  reminder24hSent  Boolean       @default(false) @map("reminder_24h_sent")
+  reminder1hSent   Boolean       @default(false) @map("reminder_1h_sent")
+  followUpSent     Boolean       @default(false) @map("follow_up_sent")
+  packId           String?       @map("pack_id")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id])
+  student    Student    @relation(fields: [studentId], references: [id])
+  lessonType LessonType @relation(fields: [lessonTypeId], references: [id])
+  pack       Pack?      @relation(fields: [packId], references: [id])
+  payments   Payment[]
+
+  @@unique([tenantId, startsAt], name: "no_double_booking")
+  @@index([tenantId, startsAt])
+  @@index([tenantId, status])
+  @@index([tenantId, paymentStatus])
+  @@map("lessons")
+}
+
+// ════════════════════════════════════════════════════════════
+// PACKS & LEDGER
+// ════════════════════════════════════════════════════════════
+
+model Pack {
+  id             String   @id @default(uuid())
+  tenantId       String   @map("tenant_id")
+  studentId      String   @map("student_id")
+  lessonTypeId   String   @map("lesson_type_id")
+  totalCredits   Int      @map("total_credits")
+  usedCredits    Int      @default(0) @map("used_credits")
+  expiresAt      DateTime? @map("expires_at")
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  tenant     Tenant       @relation(fields: [tenantId], references: [id])
+  student    Student      @relation(fields: [studentId], references: [id])
+  lessonType LessonType   @relation(fields: [lessonTypeId], references: [id])
+  lessons    Lesson[]
+  ledger     PackLedger[]
+
+  @@index([tenantId, studentId])
+  @@map("packs")
+}
+
+model PackLedger {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  packId    String   @map("pack_id")
+  lessonId  String?  @map("lesson_id")
+  delta     Int      // -1 para consumir, +1 para reembolso
+  reason    String   // "booking", "cancel_refund", "no_show", "admin_adjust"
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  pack   Pack   @relation(fields: [packId], references: [id])
+
+  @@index([packId])
+  @@map("pack_ledger")
+}
+
+// ════════════════════════════════════════════════════════════
+// PAYMENTS
+// ════════════════════════════════════════════════════════════
+
+model Payment {
+  id                 String          @id @default(uuid())
+  tenantId           String          @map("tenant_id")
+  lessonId           String?         @map("lesson_id")
+  amount             Int
+  currency           String          @default("COP")
+  status             PaymentStatus   @default(pending)
+  provider           PaymentProvider @default(wompi)
+  providerPaymentId  String?         @map("provider_payment_id")
+  providerReference  String?         @unique @map("provider_reference")
+  checkoutUrl        String?         @map("checkout_url")
+  rawPayload         Json?           @map("raw_payload")
+  paidAt             DateTime?       @map("paid_at")
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id])
+  lesson Lesson? @relation(fields: [lessonId], references: [id])
+
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+  @@map("payments")
+}
+
+// ════════════════════════════════════════════════════════════
+// AVAILABILITY
+// ════════════════════════════════════════════════════════════
+
+model AvailabilityRule {
+  id          String @id @default(uuid())
+  tenantId    String @map("tenant_id")
+  weekday     Int    // 0=Domingo .. 6=Sábado
+  startTime   String @map("start_time") // "09:00"
+  endTime     String @map("end_time")   // "18:00"
+  slotMinutes Int    @default(60) @map("slot_minutes")
+  isActive    Boolean @default(true) @map("is_active")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@map("availability_rules")
+}
+
+model BlockedTime {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  startsAt  DateTime @map("starts_at")
+  endsAt    DateTime @map("ends_at")
+  reason    String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, startsAt])
+  @@map("blocked_times")
+}
+
+// ════════════════════════════════════════════════════════════
+// BOT & MESSAGING
+// ════════════════════════════════════════════════════════════
+
+model MessageLog {
+  id         String     @id @default(uuid())
+  tenantId   String     @map("tenant_id")
+  channel    BotChannel
+  direction  String     // "incoming" | "outgoing"
+  fromId     String?    @map("from_id")
+  toId       String?    @map("to_id")
+  body       String     @db.Text
+  intent     String?
+  metadata   Json?
+  createdAt  DateTime   @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, createdAt])
+  @@map("message_log")
+}
+
+// ════════════════════════════════════════════════════════════
+// WEBHOOKS & JOBS
+// ════════════════════════════════════════════════════════════
+
+model WebhooksLog {
+  id             String   @id @default(uuid())
+  tenantId       String?  @map("tenant_id")
+  provider       String
+  eventType      String   @map("event_type")
+  idempotencyKey String?  @unique @map("idempotency_key")
+  payload        Json
+  processed      Boolean  @default(false)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, createdAt])
+  @@map("webhooks_log")
+}
+
+model JobRun {
+  id          String    @id @default(uuid())
+  tenantId    String?   @map("tenant_id")
+  jobName     String    @map("job_name")
+  jobId       String?   @map("job_id")
+  status      JobStatus @default(queued)
+  payload     Json?
+  result      Json?
+  error       String?   @db.Text
+  attempts    Int       @default(0)
+  startedAt   DateTime? @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, jobName])
+  @@index([status])
+  @@map("job_runs")
+}
+
+// ════════════════════════════════════════════════════════════
+// FEATURE FLAGS
+// ════════════════════════════════════════════════════════════
+
+model FeatureFlag {
+  id        String  @id @default(uuid())
+  tenantId  String? @map("tenant_id")
+  key       String
+  value     Boolean @default(false)
+  metadata  Json?
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, key])
+  @@map("feature_flags")
+}

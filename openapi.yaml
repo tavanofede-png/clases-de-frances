@@ -1,0 +1,459 @@
+openapi: 3.0.3
+info:
+  title: Teach Pro API
+  description: API para plataforma SaaS de clases de idiomas online. Multi-tenant.
+  version: 1.0.0
+servers:
+  - url: http://localhost:4000
+    description: Desarrollo local
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: OK
+
+  /auth/login:
+    post:
+      summary: Iniciar sesión
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, minLength: 6 }
+              required: [email, password]
+      responses:
+        '200':
+          description: Login exitoso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  data:
+                    type: object
+                    properties:
+                      user: { $ref: '#/components/schemas/User' }
+                      accessToken: { type: string }
+                      refreshToken: { type: string }
+
+  /auth/me:
+    get:
+      summary: Obtener usuario actual
+      tags: [Auth]
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Datos del usuario
+
+  /t/{tenantSlug}/public/leads:
+    post:
+      summary: Crear lead (formulario de contacto)
+      tags: [Public]
+      parameters:
+        - $ref: '#/components/parameters/tenantSlug'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLead'
+      responses:
+        '201':
+          description: Lead creado
+
+  /t/{tenantSlug}/public/lesson-types:
+    get:
+      summary: Listar tipos de clase
+      tags: [Public]
+      parameters:
+        - $ref: '#/components/parameters/tenantSlug'
+      responses:
+        '200':
+          description: Lista de tipos de clase
+
+  /t/{tenantSlug}/public/slots:
+    get:
+      summary: Obtener slots disponibles
+      tags: [Public]
+      parameters:
+        - $ref: '#/components/parameters/tenantSlug'
+        - name: lessonTypeId
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+        - name: from
+          in: query
+          required: true
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          required: true
+          schema: { type: string, format: date }
+        - name: tz
+          in: query
+          schema: { type: string, default: 'America/Bogota' }
+      responses:
+        '200':
+          description: Slots disponibles en ISO 8601
+
+  /t/{tenantSlug}/public/info:
+    get:
+      summary: Información del tenant (landing)
+      tags: [Public]
+      parameters:
+        - $ref: '#/components/parameters/tenantSlug'
+      responses:
+        '200':
+          description: Datos públicos del tenant
+
+  /t/{tenantSlug}/bookings:
+    post:
+      summary: Crear reserva
+      tags: [Student]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/tenantSlug'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBooking'
+      responses:
+        '201':
+          description: Reserva creada
+
+  /t/{tenantSlug}/me/lessons:
+    get:
+      summary: Mis clases
+      tags: [Student]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/tenantSlug'
+      responses:
+        '200':
+          description: Lista de clases del alumno
+
+  /t/{tenantSlug}/me/packs:
+    get:
+      summary: Mis packs
+      tags: [Student]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/tenantSlug'
+      responses:
+        '200':
+          description: Packs del alumno
+
+  /t/{tenantSlug}/lessons/{id}/reschedule:
+    post:
+      summary: Reprogramar clase
+      tags: [Student]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/tenantSlug'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                newStartsAt: { type: string, format: date-time }
+              required: [newStartsAt]
+      responses:
+        '200':
+          description: Clase reprogramada
+
+  /t/{tenantSlug}/lessons/{id}/cancel:
+    post:
+      summary: Cancelar clase
+      tags: [Student]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/tenantSlug'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string }
+      responses:
+        '200':
+          description: Clase cancelada
+
+  /t/{tenantSlug}/payments/checkout:
+    post:
+      summary: Generar checkout Wompi
+      tags: [Student]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/tenantSlug'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                lessonId: { type: string, format: uuid }
+              required: [lessonId]
+      responses:
+        '200':
+          description: URL de checkout
+
+  /t/{tenantSlug}/payments/webhook/wompi:
+    post:
+      summary: Webhook Wompi
+      tags: [Webhooks]
+      parameters:
+        - $ref: '#/components/parameters/tenantSlug'
+      responses:
+        '200':
+          description: Webhook procesado
+
+  /t/{tenantSlug}/bot/incoming:
+    post:
+      summary: Mensaje entrante del bot
+      tags: [Bot]
+      parameters:
+        - $ref: '#/components/parameters/tenantSlug'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BotIncoming'
+      responses:
+        '200':
+          description: Respuesta del bot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BotResponse'
+
+  /t/{tenantSlug}/admin/lessons:
+    get:
+      summary: Listar clases (admin)
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/tenantSlug'
+        - { name: status, in: query, schema: { type: string } }
+        - { name: paymentStatus, in: query, schema: { type: string } }
+        - { name: from, in: query, schema: { type: string } }
+        - { name: to, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: Lista de clases
+
+  /t/{tenantSlug}/admin/students:
+    get:
+      summary: Listar alumnos
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/tenantSlug'
+      responses:
+        '200':
+          description: Lista de alumnos
+
+  /t/{tenantSlug}/admin/payments:
+    get:
+      summary: Listar pagos
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/tenantSlug'
+      responses:
+        '200':
+          description: Lista de pagos
+
+  /t/{tenantSlug}/admin/config:
+    patch:
+      summary: Actualizar configuración del tenant
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/tenantSlug'
+      responses:
+        '200':
+          description: Configuración actualizada
+
+  /t/{tenantSlug}/admin/availability/rules:
+    post:
+      summary: Crear regla de disponibilidad
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/tenantSlug'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAvailabilityRule'
+      responses:
+        '201':
+          description: Regla creada
+    get:
+      summary: Listar reglas de disponibilidad
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/tenantSlug'
+      responses:
+        '200':
+          description: Reglas de disponibilidad
+
+  /t/{tenantSlug}/admin/blocked-times:
+    post:
+      summary: Crear bloqueo de horario
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/tenantSlug'
+      responses:
+        '201':
+          description: Bloqueo creado
+
+  /t/{tenantSlug}/admin/reports/summary:
+    get:
+      summary: Resumen de reportes
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/tenantSlug'
+      responses:
+        '200':
+          description: Métricas del tenant
+
+  /super-admin/tenants:
+    get:
+      summary: Listar tenants
+      tags: [SuperAdmin]
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Lista de tenants
+    post:
+      summary: Crear tenant
+      tags: [SuperAdmin]
+      security: [{ bearerAuth: [] }]
+      responses:
+        '201':
+          description: Tenant creado
+
+  /super-admin/metrics:
+    get:
+      summary: Métricas globales
+      tags: [SuperAdmin]
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Métricas del sistema
+
+  /super-admin/logs/webhooks:
+    get:
+      summary: Logs de webhooks
+      tags: [SuperAdmin]
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Logs
+
+  /super-admin/logs/jobs:
+    get:
+      summary: Logs de jobs
+      tags: [SuperAdmin]
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Logs de jobs
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    tenantSlug:
+      name: tenantSlug
+      in: path
+      required: true
+      schema: { type: string }
+      description: Slug del tenant (ej. profe-frances-co)
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id: { type: string }
+        email: { type: string }
+        name: { type: string }
+        role: { type: string, enum: [super_admin, tenant_admin, student] }
+        tenantId: { type: string }
+
+    CreateLead:
+      type: object
+      properties:
+        name: { type: string }
+        phone: { type: string }
+        email: { type: string }
+        objective: { type: string }
+      required: [name, phone]
+
+    CreateBooking:
+      type: object
+      properties:
+        lessonTypeId: { type: string, format: uuid }
+        startsAt: { type: string, format: date-time }
+      required: [lessonTypeId, startsAt]
+
+    CreateAvailabilityRule:
+      type: object
+      properties:
+        weekday: { type: integer, minimum: 0, maximum: 6 }
+        startTime: { type: string, pattern: '^\d{2}:\d{2}$' }
+        endTime: { type: string, pattern: '^\d{2}:\d{2}$' }
+        slotMinutes: { type: integer, default: 60 }
+      required: [weekday, startTime, endTime]
+
+    BotIncoming:
+      type: object
+      properties:
+        channel: { type: string, enum: [webchat, whatsapp, telegram] }
+        from: { type: string }
+        messageText: { type: string }
+        tz: { type: string, default: 'America/Bogota' }
+        locale: { type: string, default: 'es-CO' }
+      required: [channel, from, messageText]
+
+    BotResponse:
+      type: object
+      properties:
+        replyText: { type: string }
+        quickReplies:
+          type: array
+          items:
+            type: object
+            properties:
+              label: { type: string }
+              value: { type: string }
