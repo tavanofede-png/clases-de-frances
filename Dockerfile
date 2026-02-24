@@ -2,8 +2,8 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy root package files
-COPY package.json package-lock.json ./
+# Copy root config files
+COPY package.json package-lock.json tsconfig.base.json ./
 
 # Copy workspace package.json files
 COPY apps/api/package.json apps/api/
@@ -19,8 +19,10 @@ COPY . .
 # Generate Prisma client
 RUN npx prisma generate --schema=packages/db/prisma/schema.prisma
 
+# Build shared package first
+RUN cd packages/shared && npx tsc
+
 # Build the API
-COPY tsconfig.base.json ./
 RUN cd apps/api && npx tsc
 
 # Expose port
