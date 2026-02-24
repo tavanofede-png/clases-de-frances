@@ -97,6 +97,46 @@ export default function BookPage({ params }: { params: { tenantSlug: string } })
         }
     };
 
+    const handleBookPack = async (packType: LessonType) => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            router.push(`/t/${params.tenantSlug}/login`);
+            return;
+        }
+
+        setLoading(true);
+        setError('');
+        try {
+            const res = await fetch(`${apiUrl}/t/${params.tenantSlug}/packs/purchase`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    lessonTypeId: packType.id,
+                }),
+            });
+            const data = await res.json();
+
+            if (!data.ok) {
+                setError(data.error || 'Error al procesar el paquete');
+                setLoading(false);
+                return;
+            }
+
+            if (data.data?.checkoutUrl) {
+                window.location.href = data.data.checkoutUrl;
+            } else {
+                setSuccess(data.message || 'Paquete listo');
+                setLoading(false);
+            }
+        } catch (err) {
+            setError('Error de conexión');
+            setLoading(false);
+        }
+    };
+
     const formatCOP = (n: number) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n);
     const fmtTime = (d: string) => new Date(d).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true });
     const fmtDateFull = (d: string) => new Date(d).toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -167,8 +207,16 @@ export default function BookPage({ params }: { params: { tenantSlug: string } })
                             {lessonTypes.map(lt => (
                                 <button
                                     key={lt.id}
-                                    onClick={() => { setSelectedType(lt); setStep(2); }}
-                                    className="card text-left hover:border-primary-300 hover:shadow-lg transition-all group relative overflow-hidden"
+                                    onClick={() => {
+                                        if (lt.isPackType) {
+                                            handleBookPack(lt);
+                                        } else {
+                                            setSelectedType(lt);
+                                            setStep(2);
+                                        }
+                                    }}
+                                    disabled={loading}
+                                    className="card text-left hover:border-primary-300 hover:shadow-lg transition-all group relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     <div className="flex items-start justify-between">
                                         <div>

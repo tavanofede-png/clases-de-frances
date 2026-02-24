@@ -104,6 +104,11 @@ export const CreateCheckoutSchema = z.object({
 });
 export type CreateCheckoutInput = z.infer<typeof CreateCheckoutSchema>;
 
+export const CreatePackPurchaseSchema = z.object({
+    lessonTypeId: z.string().uuid(),
+});
+export type CreatePackPurchaseInput = z.infer<typeof CreatePackPurchaseSchema>;
+
 // ════════════════════════════════════════════════════════════
 // Bot
 // ════════════════════════════════════════════════════════════

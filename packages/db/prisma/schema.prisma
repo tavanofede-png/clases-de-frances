@@ -259,6 +259,7 @@ model Pack {
   lessonType LessonType   @relation(fields: [lessonTypeId], references: [id])
   lessons    Lesson[]
   ledger     PackLedger[]
+  payments   Payment[]
 
   @@index([tenantId, studentId])
   @@map("packs")
@@ -288,6 +289,7 @@ model Payment {
   id                 String          @id @default(uuid())
   tenantId           String          @map("tenant_id")
   lessonId           String?         @map("lesson_id")
+  packId             String?         @map("pack_id")
   amount             Int
   currency           String          @default("COP")
   status             PaymentStatus   @default(pending)
@@ -302,6 +304,7 @@ model Payment {
 
   tenant Tenant  @relation(fields: [tenantId], references: [id])
   lesson Lesson? @relation(fields: [lessonId], references: [id])
+  pack   Pack?   @relation(fields: [packId], references: [id])
 
   @@index([tenantId, status])
   @@index([tenantId, createdAt])

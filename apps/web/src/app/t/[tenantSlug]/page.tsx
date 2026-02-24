@@ -151,7 +151,7 @@ export default function TenantLanding({ params }: { params: { tenantSlug: string
                             {info?.name || 'Cargando...'}
                         </span>
                     </div>
-                    <div className="hidden lg:flex items-center gap-8 text-sm font-medium text-gray-500">
+                    <div className="hidden xl:flex items-center gap-6 text-sm font-medium text-gray-500">
                         <a href="#metodologia" className="hover:text-primary-600 transition-colors">Metodología</a>
                         <a href="#como-funciona" className="hover:text-primary-600 transition-colors">Cómo funciona</a>
                         <a href="#niveles" className="hover:text-primary-600 transition-colors">Niveles</a>
@@ -162,7 +162,7 @@ export default function TenantLanding({ params }: { params: { tenantSlug: string
                     <div className="flex items-center gap-4">
                         {user ? (
                             <>
-                                <span className="hidden sm:inline text-sm font-medium text-gray-600">Hola, {user.name}</span>
+                                <span className="hidden md:inline text-sm font-medium text-gray-600 truncate max-w-[120px]">Hola, {user.name?.split(' ')[0]}</span>
                                 <a href={`/t/${params.tenantSlug}/portal`} className="hidden sm:inline text-sm font-semibold text-primary-700 hover:text-primary-900 transition-colors">Mi Portal</a>
                                 <button onClick={() => { localStorage.clear(); setUser(null); }} className="hidden sm:inline text-sm font-semibold text-red-500 hover:text-red-600 transition-colors">Salir</button>
                             </>
@@ -172,14 +172,14 @@ export default function TenantLanding({ params }: { params: { tenantSlug: string
                         <a href={`/t/${params.tenantSlug}/book`} className="btn-primary !py-2.5 !px-5 text-sm">
                             Reservar clase
                         </a>
-                        <button onClick={() => setMobileMenu(!mobileMenu)} className="lg:hidden p-2 text-gray-600 hover:text-primary-600">
+                        <button onClick={() => setMobileMenu(!mobileMenu)} className="xl:hidden p-2 text-gray-600 hover:text-primary-600">
                             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={mobileMenu ? 'M6 18L18 6M6 6l12 12' : 'M4 6h16M4 12h16M4 18h16'} /></svg>
                         </button>
                     </div>
                 </div>
                 {/* Mobile menu */}
                 {mobileMenu && (
-                    <div className="lg:hidden bg-white border-t border-gray-100 px-4 py-6 space-y-4 animate-slide-up">
+                    <div className="xl:hidden bg-white border-t border-gray-100 px-4 py-6 space-y-4 animate-slide-up">
                         {['Metodología|#metodologia', 'Cómo funciona|#como-funciona', 'Niveles|#niveles', 'Precios|#precios', 'Testimonios|#testimonios', 'FAQ|#faq'].map(item => {
                             const [label, href] = item.split('|');
                             return <a key={href} href={href} onClick={() => setMobileMenu(false)} className="block text-lg font-medium text-gray-700 hover:text-primary-600">{label}</a>;

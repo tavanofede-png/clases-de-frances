@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { prisma, queues } from '../index';
 import { resolveTenant, requireAuth, requireTenantAccess } from '../middleware/auth';
-import { CreateBookingSchema, RescheduleSchema, CancelSchema, CreateCheckoutSchema } from '@teach-pro/shared';
+import { CreateBookingSchema, RescheduleSchema, CancelSchema, CreateCheckoutSchema, CreatePackPurchaseSchema } from '@teach-pro/shared';
 import { v4 as uuidv4 } from 'uuid';
 
 export const studentRouter = Router({ mergeParams: true });
@@ -425,6 +425,66 @@ studentRouter.post('/payments/checkout', async (req: Request, res: Response, nex
         res.json({
             ok: true,
             data: { checkoutUrl, reference, amount: lesson.lessonType.priceAmount },
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// POST /t/:tenantSlug/packs/purchase
+studentRouter.post('/packs/purchase', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const tenant = (req as any).tenant;
+        const user = (req as any).user;
+        const body = CreatePackPurchaseSchema.parse(req.body);
+
+        const student = await prisma.student.findFirst({
+            where: { userId: user.userId, tenantId: tenant.id },
+        });
+        if (!student) {
+            return res.status(404).json({ ok: false, error: 'Estudiante no encontrado' });
+        }
+
+        const lessonType = await prisma.lessonType.findFirst({
+            where: { id: body.lessonTypeId, tenantId: tenant.id, isActive: true, isPackType: true },
+        });
+        if (!lessonType || !lessonType.packSize) {
+            return res.status(404).json({ ok: false, error: 'Tipo de paquete no encontrado' });
+        }
+
+        // Create initial inactive Pack
+        const pack = await prisma.pack.create({
+            data: {
+                tenantId: tenant.id,
+                studentId: student.id,
+                lessonTypeId: lessonType.id,
+                totalCredits: lessonType.packSize,
+                usedCredits: 0,
+                isActive: false, // Activated by webhook after payment
+            },
+        });
+
+        const reference = `PK-${uuidv4().slice(0, 8).toUpperCase()}`;
+        const wompiPublicKey = tenant.settings?.wompiPublicKey || process.env.WOMPI_PUBLIC_KEY;
+        const amountInCents = lessonType.priceAmount * 100;
+        const checkoutUrl = `https://checkout.wompi.co/p/?public-key=${wompiPublicKey}&currency=COP&amount-in-cents=${amountInCents}&reference=${reference}&redirect-url=${process.env.WEB_URL}/t/${tenant.slug}/payment/result`;
+
+        const payment = await prisma.payment.create({
+            data: {
+                tenantId: tenant.id,
+                packId: pack.id,
+                amount: lessonType.priceAmount,
+                currency: lessonType.currency,
+                provider: 'wompi',
+                providerReference: reference,
+                checkoutUrl,
+            },
+        });
+
+        res.json({
+            ok: true,
+            data: { checkoutUrl, reference, amount: lessonType.priceAmount },
+            message: 'Paquete listo. Procede al pago para confirmar.',
         });
     } catch (error) {
         next(error);

@@ -136,6 +136,15 @@ webhookRouter.post('/wompi', async (req: Request, res: Response, next: NextFunct
             }
         }
 
+        // Activate pack if payment maps to one
+        if (payment.packId && wompiStatus === 'APPROVED') {
+            await prisma.pack.update({
+                where: { id: payment.packId },
+                data: { isActive: true },
+            });
+            console.log(`[${requestId}] Pack ${payment.packId} activado mediante pago ${payment.id}`);
+        }
+
         // Mark webhook as processed
         await prisma.webhooksLog.update({
             where: { idempotencyKey },
