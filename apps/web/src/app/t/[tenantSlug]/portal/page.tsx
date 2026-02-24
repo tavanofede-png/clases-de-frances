@@ -108,6 +108,9 @@ export default function PortalPage({ params }: { params: { tenantSlug: string } 
                         <span className="font-bold text-gray-900 hidden sm:block">Mi Portal</span>
                     </div>
                     <div className="flex items-center gap-4">
+                        <a href={`/t/${params.tenantSlug}`} className="text-sm font-medium text-primary-600 hover:text-primary-700 hidden sm:block transition-colors mr-2">
+                            ← Volver a la web
+                        </a>
                         <span className="text-sm text-gray-500">{user?.name}</span>
                         <button onClick={handleLogout} className="text-sm text-red-500 hover:text-red-600">Salir</button>
                     </div>

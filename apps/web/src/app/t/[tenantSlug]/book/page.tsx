@@ -122,6 +122,9 @@ export default function BookPage({ params }: { params: { tenantSlug: string } })
                         <button onClick={() => { setSuccess(''); setStep(1); setSelectedType(null); setSelectedSlot(null); }} className="btn-secondary w-full">
                             Reservar otra clase
                         </button>
+                        <a href={`/t/${params.tenantSlug}`} className="block text-sm text-primary-600 hover:text-primary-700 pt-2 font-medium">
+                            Volver al inicio
+                        </a>
                     </div>
                 </div>
             </div>
@@ -207,8 +210,8 @@ export default function BookPage({ params }: { params: { tenantSlug: string } })
                                             key={date}
                                             onClick={() => { setSelectedDate(date); setSelectedSlot(null); }}
                                             className={`flex-shrink-0 w-16 py-3 rounded-xl border text-center transition-all ${selectedDate === date
-                                                    ? 'bg-primary-600 text-white border-primary-600 shadow-lg'
-                                                    : 'bg-white border-gray-200 hover:border-primary-300'
+                                                ? 'bg-primary-600 text-white border-primary-600 shadow-lg'
+                                                : 'bg-white border-gray-200 hover:border-primary-300'
                                                 }`}
                                         >
                                             <p className={`text-xs ${selectedDate === date ? 'text-primary-100' : 'text-gray-400'}`}>{day}</p>
@@ -238,8 +241,8 @@ export default function BookPage({ params }: { params: { tenantSlug: string } })
                                                 key={slot.start}
                                                 onClick={() => { setSelectedSlot(slot); setStep(3); }}
                                                 className={`py-3 px-2 rounded-xl border text-sm font-medium transition-all ${selectedSlot?.start === slot.start
-                                                        ? 'bg-primary-600 text-white border-primary-600'
-                                                        : 'bg-white border-gray-200 hover:border-primary-300 hover:bg-primary-50 text-gray-700'
+                                                    ? 'bg-primary-600 text-white border-primary-600'
+                                                    : 'bg-white border-gray-200 hover:border-primary-300 hover:bg-primary-50 text-gray-700'
                                                     }`}
                                             >
                                                 {fmtTime(slot.start)}
