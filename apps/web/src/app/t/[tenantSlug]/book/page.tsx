@@ -39,7 +39,7 @@ export default function BookPage({ params }: { params: { tenantSlug: string } })
         fetch(`${apiUrl}/t/${params.tenantSlug}/public/lesson-types`)
             .then(r => r.json())
             .then(r => {
-                if (r.ok) setLessonTypes(r.data.filter((t: LessonType) => !t.isPackType));
+                if (r.ok) setLessonTypes(r.data);
             })
             .catch(() => { });
     }, [apiUrl, params.tenantSlug]);
@@ -168,18 +168,25 @@ export default function BookPage({ params }: { params: { tenantSlug: string } })
                                 <button
                                     key={lt.id}
                                     onClick={() => { setSelectedType(lt); setStep(2); }}
-                                    className="card text-left hover:border-primary-300 hover:shadow-lg transition-all group"
+                                    className="card text-left hover:border-primary-300 hover:shadow-lg transition-all group relative overflow-hidden"
                                 >
                                     <div className="flex items-start justify-between">
                                         <div>
-                                            <h3 className="text-lg font-semibold text-gray-900 group-hover:text-primary-700">{lt.name}</h3>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <h3 className="text-lg font-semibold text-gray-900 group-hover:text-primary-700">{lt.name}</h3>
+                                                {lt.isPackType && (
+                                                    <span className="inline-block px-2 py-0.5 bg-primary-100 text-primary-700 text-xs font-bold rounded-full border border-primary-200">
+                                                        Pack de {lt.packSize} clases
+                                                    </span>
+                                                )}
+                                            </div>
                                             <p className="text-sm text-gray-500 mt-1">{lt.description}</p>
                                             <div className="flex items-center gap-4 mt-3 text-sm text-gray-400">
-                                                <span>⏱️ {lt.durationMin} min</span>
-                                                <span>💰 {formatCOP(lt.priceAmount)}</span>
+                                                <span>⏱️ {lt.durationMin} min {lt.isPackType ? '/ clase' : ''}</span>
+                                                <span className="font-medium text-gray-600">💰 {formatCOP(lt.priceAmount)}</span>
                                             </div>
                                         </div>
-                                        <span className="text-2xl group-hover:translate-x-1 transition-transform">→</span>
+                                        <span className="text-2xl group-hover:translate-x-1 transition-transform text-primary-400">→</span>
                                     </div>
                                 </button>
                             ))}
